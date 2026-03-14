@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Products</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            cursor: pointer;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        tr:nth-child(odd) {
+            background-color: #ffffff;
+        }
+
+        img {
+            max-width: 100px;
+            max-height: 100px;
+        }
+
+        .pagination {
+            margin-top: 20px;
+        }
+
+        .pagination button {
+            margin: 0 5px;
+            padding: 5px 10px;
+        }
+
+        .search {
+            margin-bottom: 20px;
+        }
+
+        .sort-btn {
+            margin-left: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Products Dashboard</h1>
+    <div class="search">
+        <input type="text" id="searchInput" placeholder="Search by title..." oninput="filterProducts()">
+    </div>
+    <table id="productsTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title <button class="sort-btn" onclick="sortBy('title', 'asc')">↑</button><button class="sort-btn"
+                        onclick="sortBy('title', 'desc')">↓</button></th>
+                <th>Price <button class="sort-btn" onclick="sortBy('price', 'asc')">↑</button><button class="sort-btn"
+                        onclick="sortBy('price', 'desc')">↓</button></th>
+                <th>Images</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+        </tbody>
+    </table>
+    <div class="pagination">
+        <label>Items per page:</label>
+        <select id="itemsPerPage" onchange="changeItemsPerPage()">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="20">20</option>
+        </select>
+        <button onclick="prevPage()">Previous</button>
+        <span id="pageInfo"></span>
+        <button onclick="nextPage()">Next</button>
+    </div>
+
+    <script>
+        let allProducts = [];
+        let filteredProducts = [];
+        let currentPage = 1;
+        let itemsPerPage = 10;
+        let sortField = '';
+        let sortOrder = 'asc';
+
+        async function fetchProducts() {
+            try {
+                const response = await fetch('https://api.escuelajs.co/api/v1/products');
+                allProducts = await response.json();
+                filteredProducts = [...allProducts];
+                renderTable();
+            } catch (error) {
+                console.error('Error fetching products:', error);
+            }
+        }
+
+        function filterProducts() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            filteredProducts = allProducts.filter(product =>
+                product.title.toLowerCase().includes(searchTerm)
+            );
+            currentPage = 1;
+            renderTable();
+        }
+
+        function sortBy(field, order) {
+            sortField = field;
+            sortOrder = order;
+            filteredProducts.sort((a, b) => {
+                let aVal = a[field];
+                let bVal = b[field];
+                if (typeof aVal === 'string') {
+                    aVal = aVal.toLowerCase();
+                    bVal = bVal.toLowerCase();
+                }
+                if (sortOrder === 'asc') {
+                    return aVal > bVal ? 1 : -1;
+                } else {
+                    return aVal < bVal ? 1 : -1;
+                }
+            });
+            currentPage = 1;
+            renderTable();
+        }
+
+        function changeItemsPerPage() {
+            itemsPerPage = parseInt(document.getElementById('itemsPerPage').value);
+            currentPage = 1;
+            renderTable();
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderTable();
+            }
+        }
+
+        function nextPage() {
+            const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderTable();
+            }
+        }
+
+        function renderTable() {
+            const tableBody = document.getElementById('tableBody');
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const productsToShow = filteredProducts.slice(start, end);
+
+            tableBody.innerHTML = '';
+
+            productsToShow.forEach(product => {
+                const row = document.createElement('tr');
+                row.className = 'product-row';
+
+                const imagesHtml = product.images.map(img => `<img src="${img}" alt="Product Image">`).join('');
+
+                row.innerHTML = `
+                    <td>${product.id}</td>
+                    <td>${product.title}</td>
+                    <td>${product.price}</td>
+                    <td>${imagesHtml}</td>
+                    <td title="${product.description}">Hover to see description</td>
+                `;
+
+                tableBody.appendChild(row);
+            });
+
+            updatePaginationInfo();
+        }
+
+        function updatePaginationInfo() {
+            const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+            document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages}`;
+        }
+
+        // Initialize
+        fetchProducts();
+    </script>
+</body>
+
+</html>
